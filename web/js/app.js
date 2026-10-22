@@ -57,6 +57,106 @@ let toastTimer = 0;
 let searchTimer = 0;
 let tail = Promise.resolve();
 
+const narrow = window.matchMedia("(max-width: 980px)");
+const themeColor = document.querySelector('meta[name="theme-color"]');
+const screenRank = { journals: 0, entries: 1, editor: 2 };
+let navStack = ["journals"];
+let historyPushes = 0;
+
+function showScreen(name, fromPop) {
+  document.body.dataset.screen = name;
+  if (themeColor) {
+    themeColor.setAttribute("content", name === "journals" ? "#241f1b" : name === "entries" ? "#f1ebe1" : "#fbf8f2");
+  }
+  const active = document.activeElement;
+  const paneId = name === "journals" ? "journals" : name === "entries" ? "entries-pane" : "editor";
+  if (active && active !== document.body && !active.closest("#" + paneId)) active.blur();
+  if (fromPop || !narrow.matches) return;
+  if (navStack[navStack.length - 1] === name) return;
+  if (screenRank[name] > screenRank[navStack[navStack.length - 1]]) {
+    navStack.push(name);
+    writeHistory("push");
+    return;
+  }
+  const index = navStack.lastIndexOf(name);
+  navStack = index >= 0 ? navStack.slice(0, index + 1) : [name];
+  writeHistory("replace");
+}
+
+function writeHistory(method) {
+  const payload = { journal: true, stack: navStack.slice() };
+  try {
+    if (method === "push") {
+      history.pushState(payload, "");
+      historyPushes++;
+    } else {
+      history.replaceState(payload, "");
+    }
+  } catch (e) {}
+}
+
+function retreatTo(name) {
+  const index = navStack.lastIndexOf(name);
+  const steps = navStack.length - 1 - index;
+  if (narrow.matches && index >= 0 && steps > 0 && steps <= historyPushes) {
+    history.go(-steps);
+    return;
+  }
+  showScreen(name);
+}
+
+if (narrow.matches) writeHistory("replace");
+
+window.addEventListener("popstate", (event) => {
+  const state = event.state;
+  if (!state || !state.journal || !state.stack || state.stack.length === 0) return;
+  const leavingEditor = document.body.dataset.screen === "editor" &&
+    state.stack[state.stack.length - 1] !== "editor";
+  navStack = state.stack.slice();
+  historyPushes = Math.max(0, navStack.length - 1);
+  showScreen(navStack[navStack.length - 1], true);
+  if (leavingEditor) flushSave().catch(() => {});
+});
+
+narrow.addEventListener("change", () => {
+  if (!narrow.matches || (history.state && history.state.journal)) return;
+  navStack = [document.body.dataset.screen || "journals"];
+  historyPushes = 0;
+  writeHistory("replace");
+});
+
+window.addEventListener("pagehide", () => { flushSave().catch(() => {}); });
+
+function setBackLabel(label) {
+  for (const id of ["back-entries", "back-entries-empty"]) {
+    const button = $(id);
+    button.hidden = !label;
+    button.title = label;
+    button.querySelector(".back-label").textContent = label || "Entries";
+  }
+}
+
+function bindViewport() {
+  const viewport = window.visualViewport;
+  if (!viewport) return;
+  const root = document.documentElement;
+  const sync = () => {
+    if (!narrow.matches) {
+      root.style.removeProperty("--vv-height");
+      root.style.removeProperty("--vv-offset");
+      return;
+    }
+    root.style.setProperty("--vv-height", viewport.height + "px");
+    root.style.setProperty("--vv-offset", viewport.offsetTop + "px");
+  };
+  viewport.addEventListener("resize", sync);
+  viewport.addEventListener("scroll", sync);
+  narrow.addEventListener("change", sync);
+  sync();
+}
+
+bindViewport();
+
 function el(tag, className, text) {
   const node = document.createElement(tag);
   if (className) node.className = className;
@@ -152,14 +252,19 @@ function showJournalHeading() {
   if (!journal) {
     journalHeading.textContent = "Journal";
     journalBlurb.textContent = "";
+    setBackLabel("");
     return;
   }
   journalHeading.textContent = journal.name;
   journalBlurb.textContent = journal.description;
+  setBackLabel(journal.name);
 }
 
 function renderJournalList() {
   journalList.replaceChildren();
+  if (journals.length === 0) {
+    journalList.appendChild(el("p", "journal-note", "No journals yet."));
+  }
   for (const journal of journals) {
     const button = el("button", "journal");
     button.type = "button";
@@ -169,7 +274,9 @@ function renderJournalList() {
     if (journal.description) {
       button.appendChild(el("span", "journal-desc", journal.description.replace(/\s+/g, " ")));
     }
-    button.addEventListener("click", () => { void selectJournal(journal.id); });
+    button.addEventListener("click", () => {
+      void selectJournal(journal.id).then((ok) => { if (ok) showScreen("entries"); });
+    });
     journalList.appendChild(button);
   }
 }
@@ -230,7 +337,9 @@ function renderEntryList() {
       lastDay = key;
     }
     const button = entryButton(meta, activeJournalId, "", meta.preview);
-    button.addEventListener("click", () => { void openEntry(meta.id); });
+    button.addEventListener("click", () => {
+      void openEntry(meta.id).then((ok) => { if (ok) showScreen("editor"); });
+    });
     entryList.appendChild(button);
   }
   highlightActive();
@@ -277,6 +386,8 @@ function showEntry(entry) {
   setStatus("Saved");
   empty.hidden = true;
   writer.hidden = false;
+  bodyInput.scrollTop = 0;
+  previewPane.scrollTop = 0;
   if (previewOn) renderPreview();
   highlightActive();
 }
@@ -470,9 +581,9 @@ async function selectJournal(id) {
   try {
     await flushSave();
   } catch (e) {
-    return;
+    return false;
   }
-  if (token !== viewToken) return;
+  if (token !== viewToken) return false;
   activeJournalId = id;
   searchInput.value = "";
   searchQuery = "";
@@ -481,32 +592,34 @@ async function selectJournal(id) {
     entries = await neel.listEntries(id);
   } catch (e) {
     showBanner(e.message);
-    return;
+    return false;
   }
-  if (token !== viewToken) return;
+  if (token !== viewToken) return false;
   renderJournalList();
   showJournalHeading();
   renderEntryList();
   if (entries.length === 0) showEmpty("no-entry");
   else await openEntry(entries[0].id, token);
+  return token === viewToken;
 }
 
 async function openEntry(id, token = ++viewToken) {
   try {
     await flushSave();
   } catch (e) {
-    return;
+    return false;
   }
-  if (token !== viewToken) return;
+  if (token !== viewToken) return false;
   let entry;
   try {
     entry = await neel.readEntry(activeJournalId, id);
   } catch (e) {
     showBanner(e.message);
-    return;
+    return false;
   }
-  if (token !== viewToken) return;
+  if (token !== viewToken) return false;
   showEntry(entry);
+  return true;
 }
 
 async function openHit(hit) {
@@ -531,6 +644,7 @@ async function openHit(hit) {
   }
   if (token !== viewToken) return;
   showEntry(entry);
+  showScreen("editor");
 }
 
 async function newEntry() {
@@ -559,6 +673,7 @@ async function newEntry() {
   showJournalHeading();
   renderEntryList();
   showEntry(entry);
+  showScreen("editor");
   setMode(false);
   titleInput.focus();
 }
@@ -636,8 +751,8 @@ async function submitJournal(event) {
     if (id) {
       renderJournalList();
       showJournalHeading();
-    } else {
-      await selectJournal(saved.id);
+    } else if (await selectJournal(saved.id)) {
+      showScreen("entries");
     }
   } catch (e) {
     journalError.textContent = e.message;
@@ -675,8 +790,9 @@ async function deleteActiveJournal() {
     showJournalHeading();
     renderEntryList();
     showEmpty("no-journal");
-  } else {
-    await selectJournal(journals[0].id);
+    showScreen("journals");
+  } else if (await selectJournal(journals[0].id)) {
+    showScreen("entries");
   }
 }
 
@@ -752,12 +868,25 @@ searchInput.addEventListener("input", () => {
   searchTimer = setTimeout(() => { void applySearch(value); }, 200);
 });
 document.addEventListener("keydown", onKeyDown);
+$("back-journals").addEventListener("click", () => retreatTo("journals"));
+$("back-entries").addEventListener("click", () => { void leaveEditor(); });
+$("back-entries-empty").addEventListener("click", () => retreatTo("entries"));
+
+async function leaveEditor() {
+  try {
+    await flushSave();
+  } catch (e) {
+    return;
+  }
+  retreatTo("entries");
+}
 
 async function boot() {
   if (!window.neel) {
     emptyTitle.textContent = "Open Journal from the app";
     emptyCopy.textContent = "This page talks to the Nim backend through Neel.";
     emptyAction.hidden = true;
+    showScreen("editor");
     return;
   }
   neel.onclose((code, reconnecting) => {
@@ -774,13 +903,19 @@ async function boot() {
     if (journals.length === 0) {
       renderEntryList();
       showEmpty("no-journal");
+      showScreen("journals");
     } else {
-      await selectJournal(journals[0].id);
+      const opened = await selectJournal(journals[0].id);
+      if (opened) {
+        if (narrow.matches) showScreen(journals.length > 1 ? "journals" : "entries");
+        else showScreen("editor");
+      }
     }
   } catch (e) {
     emptyTitle.textContent = "Could not open the journal";
     emptyCopy.textContent = e.message || "Something went wrong.";
     emptyAction.hidden = true;
+    showScreen("editor");
     showBanner(e.message);
   }
 }

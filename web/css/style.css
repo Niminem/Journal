@@ -26,7 +26,11 @@ html, body {
   height: 100%;
   margin: 0;
   overflow: hidden;
+  background: var(--paper);
+  overscroll-behavior: none;
 }
+
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 
 body {
   background: var(--paper);
@@ -35,7 +39,11 @@ body {
   font-size: 15px;
 }
 
-button, input, textarea { font: inherit; color: inherit; }
+button, input, textarea {
+  font: inherit;
+  color: inherit;
+  touch-action: manipulation;
+}
 
 button {
   cursor: pointer;
@@ -84,7 +92,7 @@ button:focus-visible, .journal:focus-visible, .entry:focus-visible {
   background: var(--danger);
   color: #fff;
   text-align: center;
-  padding: 6px 12px;
+  padding: calc(6px + env(safe-area-inset-top)) 12px 6px;
   font-size: 13px;
 }
 
@@ -129,6 +137,7 @@ button:focus-visible, .journal:focus-visible, .entry:focus-visible {
 #journal-list {
   overflow: auto;
   flex: 1;
+  min-height: 0;
   padding: 4px 8px 12px;
 }
 
@@ -153,8 +162,17 @@ button:focus-visible, .journal:focus-visible, .entry:focus-visible {
 
 .journal-name {
   display: block;
+  overflow-wrap: anywhere;
   font-family: var(--serif);
   font-size: 16.5px;
+}
+
+.journal-note {
+  display: none;
+  margin: 8px 10px 12px;
+  color: var(--cream-dim);
+  font-size: 14px;
+  line-height: 1.45;
 }
 
 .journal-desc {
@@ -211,6 +229,8 @@ button:focus-visible, .journal:focus-visible, .entry:focus-visible {
 
 #journal-heading {
   margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
   font-family: var(--serif);
   font-size: 1.35rem;
   font-weight: 600;
@@ -243,6 +263,7 @@ button:focus-visible, .journal:focus-visible, .entry:focus-visible {
 #search {
   flex: 1;
   min-width: 0;
+  appearance: none;
   background: var(--paper-2);
   border: 1px solid var(--line);
   border-radius: 4px;
@@ -260,6 +281,7 @@ button:focus-visible, .journal:focus-visible, .entry:focus-visible {
 #entry-list {
   overflow: auto;
   flex: 1;
+  min-height: 0;
   padding-bottom: 16px;
 }
 
@@ -311,6 +333,11 @@ button:focus-visible, .journal:focus-visible, .entry:focus-visible {
 }
 
 .entry-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-family: var(--serif);
   font-size: 16.5px;
 }
@@ -379,12 +406,38 @@ button:focus-visible, .journal:focus-visible, .entry:focus-visible {
 
 .writer-top {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
+  gap: 8px;
   margin-bottom: 8px;
 }
 
+.back {
+  display: none;
+  align-items: center;
+  gap: 4px;
+  max-width: 62%;
+  min-width: 0;
+  min-height: 44px;
+  margin-right: auto;
+  padding: 8px 2px;
+  color: var(--pine);
+  font-size: 15px;
+}
+
+.back-mark { flex: none; font-size: 1.35em; line-height: 1; }
+
+.back-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.empty > .back { max-width: 100%; }
+
 .mode {
   display: flex;
+  flex: none;
   border: 1px solid var(--line);
   border-radius: 4px;
   overflow: hidden;
@@ -407,6 +460,7 @@ button:focus-visible, .journal:focus-visible, .entry:focus-visible {
   border: none;
   background: transparent;
   padding: 0;
+  appearance: none;
   font-family: var(--serif);
   font-size: 2rem;
   font-weight: 600;
@@ -449,6 +503,7 @@ button:focus-visible, .journal:focus-visible, .entry:focus-visible {
   border: none;
   resize: none;
   background: transparent;
+  appearance: none;
   padding: 0 0 24px;
   font-family: var(--serif);
   font-size: 1.125rem;
@@ -456,6 +511,7 @@ button:focus-visible, .journal:focus-visible, .entry:focus-visible {
 }
 
 #preview {
+  overflow-wrap: anywhere;
   font-family: var(--serif);
   font-size: 1.125rem;
   line-height: 1.65;
@@ -524,7 +580,9 @@ dialog {
   padding: 0;
   background: var(--paper-2);
   color: var(--ink);
-  width: min(440px, calc(100vw - 32px));
+  width: min(440px, calc(100vw - 32px - env(safe-area-inset-left) - env(safe-area-inset-right)));
+  max-height: calc(var(--vv-height, 100dvh) - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px);
+  overflow: auto;
   box-shadow: 0 18px 50px rgba(36, 31, 27, 0.22);
 }
 
@@ -569,6 +627,7 @@ label textarea { min-height: 76px; resize: vertical; }
 
 .dialog-actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;
 }
@@ -578,7 +637,7 @@ label textarea { min-height: 76px; resize: vertical; }
 #toast {
   position: fixed;
   left: 50%;
-  bottom: 18px;
+  bottom: calc(18px + env(safe-area-inset-bottom));
   transform: translateX(-50%);
   max-width: min(520px, calc(100vw - 32px));
   background: var(--walnut);
@@ -601,7 +660,118 @@ label textarea { min-height: 76px; resize: vertical; }
   border-radius: 99px;
 }
 
-@media (max-width: 860px) {
-  #app { grid-template-columns: 196px 240px minmax(0, 1fr); }
-  .writer-scroll { padding: 16px 20px 8px; }
+#journal-list, #entry-list, #body, #preview { overscroll-behavior: contain; }
+
+@media (hover: none) {
+  .journal:hover { background: transparent; }
+  .journal.active:hover { background: var(--walnut-2); }
+  .entry:hover { background: transparent; }
+  .entry.active:hover { background: var(--paper-2); }
+  .primary:hover:not(:disabled) { background: var(--pine); }
+  .danger.fill:hover { background: var(--danger); }
+  .sidebar-new:hover { background: transparent; }
+  .journal:active { background: rgba(255, 255, 255, 0.08); }
+  .entry:active { background: rgba(255, 255, 255, 0.55); }
+}
+
+@media (max-width: 980px) {
+  #app {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+    height: var(--vv-height, 100dvh);
+    margin-top: var(--vv-offset, 0px);
+  }
+
+  #journals,
+  #entries-pane,
+  #editor {
+    grid-column: 1;
+    grid-row: 1;
+    min-width: 0;
+    padding-top: env(safe-area-inset-top);
+    padding-right: env(safe-area-inset-right);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+  }
+
+  body[data-screen="journals"] #entries-pane,
+  body[data-screen="journals"] #editor,
+  body[data-screen="entries"] #journals,
+  body[data-screen="entries"] #editor,
+  body[data-screen="editor"] #journals,
+  body[data-screen="editor"] #entries-pane {
+    display: none;
+  }
+
+  #editor {
+    display: flex;
+    flex-direction: column;
+  }
+
+  #editor > .empty,
+  #editor > #writer {
+    flex: 1 1 auto;
+    height: auto;
+    min-height: 0;
+  }
+
+  .back { display: inline-flex; }
+
+  .journal-note { display: block; }
+
+  .journal { padding: 14px 12px 14px 14px; }
+
+  .entry { padding: 12px 12px 14px 14px; }
+
+  .sidebar-new,
+  #edit-journal,
+  .primary,
+  .ghost,
+  .danger.fill,
+  .mode button {
+    min-height: 44px;
+  }
+
+  .mode button { padding: 8px 14px; }
+
+  #entries-pane { border-right: none; }
+
+  .pane-head { padding: 8px 16px 12px; }
+
+  .brand-row { padding: 14px 16px 12px; }
+
+  .pane-tools { flex-wrap: wrap; }
+
+  #search,
+  label input,
+  label textarea {
+    font-size: 16px;
+  }
+
+  #search { min-height: 44px; }
+
+  #new-entry { min-height: 44px; }
+
+  #title { font-size: clamp(1.6rem, 8vw, 2rem); }
+
+  .writer-scroll { padding: 4px 16px 8px; }
+
+  .empty {
+    max-width: none;
+    margin: 0;
+    justify-content: flex-start;
+    padding: 4px 16px 24px;
+  }
+
+  .writer-foot { display: none; }
+
+  #delete-entry {
+    min-height: 44px;
+    padding: 8px;
+    margin-right: -8px;
+  }
+
+  dialog form { padding: 18px 16px 14px; }
+
+  #connection:not([hidden]) ~ #app { padding-top: 32px; }
 }

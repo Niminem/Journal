@@ -13,3 +13,4 @@ Personal journal. Nim backend, HTML/CSS/JS in `web/`, Neel 2.1 via `import neel`
 - The page calls `{.expose.}` procs as `neel.<name>(...)`. Those procs run on worker threads. All file access goes through `store.nim`, which holds one lock. The lock is not reentrant.
 - `startApp` stays after every exposed proc. `webDir` is `../web` because `startApp` is called from `src/journal.nim`.
 - Run tests with `nimble test`. Run a Nim file with `nim r`, not `nim c -r`, so the binary stays in the Nim cache and out of the project folder (though you can if you need to!). A release binary is still `nim c -d:release`.
+- `--lan` serves the app on this machine's network address (port 8770 unless `--lan:<port>`). Neel still binds `127.0.0.1`. `src/journal/lan.nim` listens on the network address and copies connections across.

@@ -8,11 +8,16 @@
 ## Run it from anywhere:
 ##
 ##   nim r src/journal.nim
+##   nim r src/journal.nim -- --lan
 ##
 ## A debug build reads `web/` from disk, so a refresh picks up page edits.
 ## `nim c -d:release src/journal.nim` embeds those files into the binary.
+## `--lan` does not open a window. It serves on this computer's network
+## address so another machine can open the printed URL.
 
+import std/os
 import neel
+import ./journal/lan
 import ./journal/store
 
 type
@@ -56,5 +61,39 @@ proc searchEntries(query: string): seq[SearchHit] {.expose.} =
   store.searchEntries(query)
 
 when isMainModule:
+  var launch: Launch
+  try:
+    launch = parseLaunch(commandLineParams())
+  except ValueError as e:
+    stderr.writeLine(e.msg)
+    quit(1)
+  if launch.help:
+    stdout.writeLine(usageText())
+    quit(0)
+
   initStore()
-  startApp(webDir = "../web", size = some((1280, 820)))
+  if not launch.lan:
+    startApp(webDir = "../web", size = some((1280, 820)))
+  else:
+    var ip: string
+    try:
+      ip = thisLanAddress()
+    except LanError as e:
+      stderr.writeLine(e.msg)
+      quit(1)
+    let origin = lanOrigin(ip, launch.port)
+    var proxy: Proxy
+    try:
+      proxy = openProxy(ip, launch.port, "127.0.0.1", launch.port)
+    except LanError as e:
+      stderr.writeLine(e.msg)
+      quit(1)
+    try:
+      stdout.writeLine("Journal on this network: " & origin)
+      stdout.writeLine("On this computer: http://127.0.0.1:" & $launch.port)
+      stdout.writeLine("Windows may ask for permission to allow Journal on the network.")
+      stdout.flushFile()
+      startApp(webDir = "../web", serve = true, port = launch.port,
+               allowedOrigins = @[origin])
+    finally:
+      proxy.stop()
