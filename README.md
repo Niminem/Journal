@@ -10,7 +10,7 @@ The first is to see whether another Nim server in front of a Neel app, in server
 
 The second is a simple journal for notes, ideas, and whatever else. The intent is to run it on a Raspberry Pi and open it from a work computer, a personal laptop, and a phone.
 
-It has been tested on Windows only. There is no plan to test it anywhere else. Your mileage may vary.
+It has been tested on Windows only. There is no plan to test it anywhere else. I would expect it to work across Mac and Linux but your mileage may vary.
 
 ## Run
 
