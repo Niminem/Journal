@@ -4,6 +4,14 @@ A personal journal. The window is HTML, CSS, and JavaScript. Nim stores the writ
 
 You can keep more than one journal. Each entry has a title and a markdown body. The page saves on its own shortly after you stop typing. Switch between Write and Preview, and search across every journal. Ctrl+N starts an entry. Ctrl+S saves immediately.
 
+This is an entirely vibe-coded, simple application. It has two purposes.
+
+The first is to see whether another Nim server in front of a Neel app, in server mode, is enough to expose the app on the LAN. That way it can be opened from any device at home, without the security hardening that comes with putting an application on the internet. [`src/journal/lan.nim`](src/journal/lan.nim) is the part to read. It listens on this machine's network address and copies each connection to Neel on `127.0.0.1`. [`src/journal.nim`](src/journal.nim) starts that proxy and passes Neel the network address as an allowed origin. That is the whole of the LAN access: another server in front of Neel, rather than a Cloudflare tunnel or the rest of what you take on when an app is reachable from the internet.
+
+The second is a simple journal for notes, ideas, and whatever else. The intent is to run it on a Raspberry Pi and open it from a work computer, a personal laptop, and a phone.
+
+It has been tested on Windows only. There is no plan to test it anywhere else. Your mileage may vary.
+
 ## Run
 
 ```
