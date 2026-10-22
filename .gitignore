@@ -1,0 +1,5 @@
+*.exe
+.DS_Store
+/tests/*
+!/tests/config.nims
+!/tests/t_*.nim
