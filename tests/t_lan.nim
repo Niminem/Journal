@@ -22,6 +22,32 @@ proc echoOnce(listener: Socket) {.thread.} =
     off += wrote
   client.close()
 
+proc echoHeld(listener: Socket) {.thread.} =
+  ## Echo four bytes, then stay open until the caller closes. A proxy that
+  ## can only copy a few connections at a time leaves the rest waiting here.
+  var client = newSocket()
+  try:
+    listener.accept(client)
+  except CatchableError:
+    return
+  var buf: array[4, byte]
+  var got = 0
+  while got < 4:
+    let n = client.recv(addr buf[got], 4 - got)
+    if n <= 0:
+      client.close()
+      return
+    got += n
+  var off = 0
+  while off < 4:
+    let n = client.send(addr buf[off], 4 - off)
+    if n <= 0:
+      break
+    off += n
+  var sink: array[8, byte]
+  discard client.recv(addr sink[0], sink.len)
+  client.close()
+
 type Front = object
   listener: Socket
   port: int
@@ -94,3 +120,33 @@ suite "lan":
     joinThread(proxy)
     backend.close()
     frontSocket.close()
+
+  test "several open connections are copied together":
+    const count = 6
+    let backend = listenOn(0)
+    let backendPort = int(backend.getLocalAddr()[1])
+    var echoes: array[count, Thread[Socket]]
+    for i in 0 ..< count:
+      createThread(echoes[i], echoHeld, backend)
+    var proxy: Proxy
+    var clients: array[count, Socket]
+    try:
+      proxy = openProxy("127.0.0.1", 0, "127.0.0.1", backendPort)
+      for i in 0 ..< count:
+        clients[i] = newSocket()
+        clients[i].connect("127.0.0.1", Port(proxy.listeningPort))
+        clients[i].send("ping")
+      for i in 0 ..< count:
+        var reply = newString(4)
+        let n = clients[i].recv(reply, 4, timeout = 1000)
+        check n == 4
+        check reply == "ping"
+    finally:
+      for client in clients:
+        if not client.isNil:
+          try: client.close() except CatchableError: discard
+      if not proxy.isNil:
+        proxy.stop()
+      try: backend.close() except CatchableError: discard
+      for echo in echoes.mitems:
+        joinThread(echo)
