@@ -1,0 +1,2 @@
+# Journal
+A personal journal
