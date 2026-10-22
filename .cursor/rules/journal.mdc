@@ -1,0 +1,15 @@
+---
+description: Journal app constraints and where data lives
+alwaysApply: true
+---
+
+# Journal
+
+Personal journal. Nim backend, HTML/CSS/JS in `web/`, Neel 2.1 via `import neel`.
+
+- Dependencies are the Nim standard library and `neel` only. Do not add Nimble packages, CDN assets, fonts, or a JavaScript build step.
+- The only writes outside this repository are the data directory `~/.journal`. Tests use `tests/scratch` and must not touch the home directory.
+- Entry bodies are markdown files. Names, timestamps, word counts, and previews are JSON. The layout is documented at the top of `src/journal/store.nim`.
+- The page calls `{.expose.}` procs as `neel.<name>(...)`. Those procs run on worker threads. All file access goes through `store.nim`, which holds one lock. The lock is not reentrant.
+- `startApp` stays after every exposed proc. `webDir` is `../web` because `startApp` is called from `src/journal.nim`.
+- Run tests with `nimble test`. Run a Nim file with `nim r`, not `nim c -r`, so the binary stays in the Nim cache and out of the project folder (though you can if you need to!). A release binary is still `nim c -d:release`.

@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Journal</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect fill='%23241f1b' width='32' height='32' rx='6'/%3E%3Cpath d='M9 8h11a3 3 0 0 1 3 3v13H12a3 3 0 0 0-3 3z' fill='%23f7f3eb'/%3E%3Cpath d='M9 8v16a3 3 0 0 1 3-3h11' fill='none' stroke='%23b8894a' stroke-width='1.4'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="/neel.js"></script>
+  <script src="/js/app.js" defer></script>
+</head>
+<body>
+  <div id="connection" hidden>Reconnecting…</div>
+  <div id="app">
+    <aside id="journals">
+      <div class="brand-row">
+        <h1 class="brand">Journal</h1>
+        <button id="new-journal" class="sidebar-new" type="button">New</button>
+      </div>
+      <div id="journal-list"></div>
+      <footer class="storage">
+        <span class="storage-label">On this computer</span>
+        <span id="storage-path"></span>
+      </footer>
+    </aside>
+
+    <section id="entries-pane">
+      <header class="pane-head">
+        <div class="pane-title-row">
+          <h2 id="journal-heading">Journal</h2>
+          <button id="edit-journal" type="button" disabled>Edit</button>
+        </div>
+        <p id="journal-blurb"></p>
+        <div class="pane-tools">
+          <input id="search" type="search" placeholder="Search all journals" aria-label="Search all journals" autocomplete="off" spellcheck="false">
+          <button id="new-entry" class="primary" type="button" disabled>New entry</button>
+        </div>
+      </header>
+      <div id="entry-list"></div>
+    </section>
+
+    <main id="editor">
+      <div id="empty" class="empty">
+        <h2 id="empty-title">No journal yet</h2>
+        <p id="empty-copy">Entries are markdown files on this computer. Start one journal, or several.</p>
+        <button id="empty-action" class="primary" type="button">New journal</button>
+      </div>
+      <div id="writer" hidden>
+        <div class="writer-scroll">
+          <div class="writer-top">
+            <div class="mode" role="group" aria-label="Editor mode">
+              <button id="mode-write" type="button" aria-pressed="true">Write</button>
+              <button id="mode-preview" type="button" aria-pressed="false">Preview</button>
+            </div>
+          </div>
+          <input id="title" type="text" placeholder="Title" maxlength="200" autocomplete="off" aria-label="Title">
+          <div class="meta">
+            <span id="entry-when"></span>
+            <span class="dot" aria-hidden="true">·</span>
+            <span id="save-state" data-state="saved">Saved</span>
+            <span class="dot" aria-hidden="true">·</span>
+            <span id="word-count">0 words</span>
+            <button id="delete-entry" type="button">Delete</button>
+          </div>
+          <textarea id="body" placeholder="Write in markdown…" spellcheck="true" aria-label="Entry"></textarea>
+          <article id="preview" hidden></article>
+        </div>
+        <footer class="writer-foot">Ctrl+N new entry · Ctrl+S save</footer>
+      </div>
+    </main>
+  </div>
+
+  <dialog id="journal-dialog">
+    <form id="journal-form">
+      <h2 id="journal-dialog-title">New journal</h2>
+      <label>Name
+        <input id="journal-name" type="text" maxlength="80" required autocomplete="off">
+      </label>
+      <label>Description
+        <textarea id="journal-description" maxlength="400"></textarea>
+      </label>
+      <p id="journal-error" class="form-error"></p>
+      <div class="dialog-actions">
+        <button id="journal-delete" class="danger" type="button" hidden>Delete journal</button>
+        <button id="journal-cancel" class="ghost" type="button">Cancel</button>
+        <button id="journal-save" class="primary" type="submit">Create</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="confirm-dialog">
+    <form id="confirm-form">
+      <h2 id="confirm-title">Delete</h2>
+      <p id="confirm-copy"></p>
+      <div class="dialog-actions">
+        <button id="confirm-cancel" class="ghost" type="button">Cancel</button>
+        <button id="confirm-ok" class="danger fill" type="button">Delete</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast" role="status" hidden></div>
+</body>
+</html>

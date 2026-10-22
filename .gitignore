@@ -1,5 +1,6 @@
 *.exe
 .DS_Store
+nimcache/
 /tests/*
 !/tests/config.nims
 !/tests/t_*.nim
